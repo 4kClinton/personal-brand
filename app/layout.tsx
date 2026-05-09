@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     canonical: BASE_URL,
   },
   openGraph: {
-    title: 'Clinton Kibet — Software Engineer & Polymath, Nairobi',
+    title: 'Clinton Kibet — Codex of a Polymath, Nairobi',
     description:
       'Clinton Kibet — software engineer, designer, draughtsman, painter, and maker based in Nairobi. Founding CTO of Nima AI and Swyft.',
     url: BASE_URL,
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Clinton Kibet — Software Engineer & Polymath, Nairobi',
+    title: 'Clinton Kibet — Codex of a Polymath, Nairobi',
     description:
       'Clinton Kibet — software engineer, designer, draughtsman, painter, and maker based in Nairobi.',
     images: ['/assets/portrait.png'],
