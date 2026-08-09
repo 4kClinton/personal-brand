@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, EB_Garamond, Caveat, Cinzel, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import ConvexClientProvider from './ConvexClientProvider';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -148,7 +149,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <ConvexClientProvider>{children}</ConvexClientProvider>
+      </body>
     </html>
   );
 }

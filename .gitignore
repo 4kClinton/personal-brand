@@ -13,3 +13,11 @@ out/
 # misc
 .DS_Store
 *.pem
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+
+# Local agent tooling
+.claude/
+.agents/
+skills-lock.json
