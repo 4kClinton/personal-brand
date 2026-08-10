@@ -9,6 +9,9 @@ export default defineSchema({
     slug: v.string(),
     // Optional illustration for the entry.
     imageId: v.optional(v.id('_storage')),
+    // Stored so next/image can size the image without layout shift.
+    imageWidth: v.optional(v.number()),
+    imageHeight: v.optional(v.number()),
     published: v.boolean(),
     publishedAt: v.number(),
     updatedAt: v.number(),

@@ -1107,9 +1107,10 @@ body::after {
   .leaf { grid-template-columns: 1fr; gap: 20px; padding: 28px 22px; }
 }
 .leaf__thumb {
+  position: relative;
   width: 100%;
   aspect-ratio: 4/5;
-  object-fit: cover;
+  overflow: hidden;
   border: 1px solid var(--sepia-dim);
   filter: sepia(.35) contrast(1.05);
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -41,8 +42,20 @@ function ArticleView({ slug }: { slug: string }) {
 
       {a.imageUrl && (
         <figure className="note__figure">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={a.imageUrl} alt="" />
+          {a.imageWidth && a.imageHeight ? (
+            <Image
+              src={a.imageUrl}
+              alt={a.title}
+              width={a.imageWidth}
+              height={a.imageHeight}
+              sizes="(max-width: 760px) 100vw, 760px"
+              style={{ width: '100%', height: 'auto' }}
+            />
+          ) : (
+            // Legacy image posted before dimensions were stored.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={a.imageUrl} alt={a.title} loading="lazy" decoding="async" />
+          )}
         </figure>
       )}
 

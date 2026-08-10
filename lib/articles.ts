@@ -9,6 +9,8 @@ export type Article = {
   publishedAt: number;
   updatedAt: number;
   imageUrl: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
 };
 
 // Convex is only wired up once NEXT_PUBLIC_CONVEX_URL exists. Pages read this

@@ -8,6 +8,37 @@ import Nav from '@/components/Nav';
 import { Article, convexConfigured, formatDate } from '@/lib/articles';
 
 const KEY_STORE = 'marginalia_admin_key';
+const MAX_DIM = 1600; // longest edge after downscale
+const JPEG_QUALITY = 0.85;
+
+type ProcessedImage = { file: File; width: number; height: number };
+
+// Downscale + recompress an image in the browser before upload so we never
+// ship a multi-megabyte phone photo. Falls back to the original on failure.
+async function processImage(raw: File): Promise<ProcessedImage> {
+  const bitmap = await createImageBitmap(raw, {
+    imageOrientation: 'from-image', // respect EXIF rotation from phones
+  });
+  const scale = Math.min(1, MAX_DIM / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('no canvas context');
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY)
+  );
+  if (!blob) throw new Error('encode failed');
+
+  const name = (raw.name || 'image').replace(/\.[^.]+$/, '') + '.jpg';
+  return { file: new File([blob], name, { type: 'image/jpeg' }), width, height };
+}
 
 /* ------------------------------- password gate ------------------------------ */
 
@@ -97,6 +128,10 @@ function Dashboard({
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   // True when the user removed an already-saved image without pasting a new one.
   const [imageCleared, setImageCleared] = useState(false);
+  // Dimensions of the processed image about to be uploaded.
+  const [imageDims, setImageDims] = useState<{ w: number; h: number } | null>(
+    null
+  );
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -119,6 +154,21 @@ function Dashboard({
     setFile(null);
     setExistingImageUrl(null);
     setImageCleared(false);
+    setImageDims(null);
+  }
+
+  // Compress/resize the chosen image, then stage it for upload.
+  async function acceptImage(raw: File) {
+    setImageCleared(false);
+    try {
+      const { file: processed, width, height } = await processImage(raw);
+      setFile(processed);
+      setImageDims({ w: width, h: height });
+    } catch {
+      // Fall back to the original if the browser can't process it.
+      setFile(raw);
+      setImageDims(null);
+    }
   }
 
   // Grab an image straight out of a paste into the body.
@@ -130,18 +180,14 @@ function Dashboard({
     const img = item.getAsFile();
     if (!img) return;
     e.preventDefault();
-    setFile(img);
-    setImageCleared(false);
+    void acceptImage(img);
   }
 
   // Mobile browsers (Chrome on Android especially) don't support pasting
   // images into a textarea, so offer an explicit picker too.
   function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0] ?? null;
-    if (picked) {
-      setFile(picked);
-      setImageCleared(false);
-    }
+    if (picked) void acceptImage(picked);
     // Reset so picking the same file again still fires onChange.
     e.target.value = '';
   }
@@ -150,6 +196,7 @@ function Dashboard({
     setFile(null);
     setExistingImageUrl(null);
     setImageCleared(true);
+    setImageDims(null);
   }
 
   async function uploadImage(): Promise<string | undefined> {
@@ -174,6 +221,10 @@ function Dashboard({
     setStatus('');
     try {
       const imageId = await uploadImage();
+      const imageMeta =
+        imageId && imageDims
+          ? { imageWidth: imageDims.w, imageHeight: imageDims.h }
+          : {};
       if (editingId) {
         await update({
           key: adminKey,
@@ -181,7 +232,7 @@ function Dashboard({
           title,
           body,
           published,
-          ...(imageId ? { imageId: imageId as never } : {}),
+          ...(imageId ? { imageId: imageId as never, ...imageMeta } : {}),
           ...(!imageId && imageCleared ? { removeImage: true } : {}),
         });
         setStatus('Note updated.');
@@ -191,7 +242,7 @@ function Dashboard({
           title,
           body,
           published,
-          ...(imageId ? { imageId: imageId as never } : {}),
+          ...(imageId ? { imageId: imageId as never, ...imageMeta } : {}),
         });
         setStatus('Note posted.');
       }
@@ -209,6 +260,7 @@ function Dashboard({
     setBody(a.body);
     setPublished(a.published);
     setFile(null);
+    setImageDims(null);
     setExistingImageUrl(a.imageUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import Nav from '@/components/Nav';
@@ -25,8 +26,15 @@ function Leaf({ article, n }: { article: Article; n: number }) {
   return (
     <a className="leaf" href={`/articles/${article.slug}`}>
       {article.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="leaf__thumb" src={article.imageUrl} alt="" />
+        <div className="leaf__thumb">
+          <Image
+            src={article.imageUrl}
+            alt=""
+            fill
+            sizes="(max-width: 720px) 100vw, 200px"
+            style={{ objectFit: 'cover' }}
+          />
+        </div>
       )}
       <div className="leaf__body">
         <div className="leaf__num">

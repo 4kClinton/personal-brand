@@ -124,9 +124,14 @@ export const create = mutation({
     title: v.string(),
     body: v.string(),
     imageId: v.optional(v.id('_storage')),
+    imageWidth: v.optional(v.number()),
+    imageHeight: v.optional(v.number()),
     published: v.boolean(),
   },
-  handler: async (ctx, { key, title, body, imageId, published }) => {
+  handler: async (
+    ctx,
+    { key, title, body, imageId, imageWidth, imageHeight, published }
+  ) => {
     assertAdmin(key);
     const now = Date.now();
     const slug = slugify(title);
@@ -135,6 +140,8 @@ export const create = mutation({
       body: body.trim(),
       slug,
       imageId,
+      imageWidth,
+      imageHeight,
       published,
       publishedAt: now,
       updatedAt: now,
@@ -153,13 +160,25 @@ export const update = mutation({
     title: v.string(),
     body: v.string(),
     imageId: v.optional(v.id('_storage')),
+    imageWidth: v.optional(v.number()),
+    imageHeight: v.optional(v.number()),
     // Set true to detach (and delete) the current image without adding a new one.
     removeImage: v.optional(v.boolean()),
     published: v.boolean(),
   },
   handler: async (
     ctx,
-    { key, id, title, body, imageId, removeImage, published }
+    {
+      key,
+      id,
+      title,
+      body,
+      imageId,
+      imageWidth,
+      imageHeight,
+      removeImage,
+      published,
+    }
   ) => {
     assertAdmin(key);
     const existing = await ctx.db.get(id);
@@ -177,9 +196,13 @@ export const update = mutation({
         await ctx.storage.delete(existing.imageId);
       }
       patch.imageId = imageId;
+      patch.imageWidth = imageWidth;
+      patch.imageHeight = imageHeight;
     } else if (removeImage) {
       if (existing?.imageId) await ctx.storage.delete(existing.imageId);
       patch.imageId = undefined;
+      patch.imageWidth = undefined;
+      patch.imageHeight = undefined;
     }
 
     await ctx.db.patch(id, patch);
