@@ -1,98 +1,91 @@
-'use client';
-
-import Image from 'next/image';
-import { useParams } from 'next/navigation';
-import { useQuery } from 'convex/react';
+import type { Metadata } from 'next';
+import { fetchQuery } from 'convex/nextjs';
 import { api } from '@/convex/_generated/api';
-import Nav from '@/components/Nav';
-import {
-  Article,
-  convexConfigured,
-  formatDate,
-  toParagraphs,
-} from '@/lib/articles';
+import { excerpt } from '@/lib/articles';
+import ArticleClient from './ArticleClient';
 
-function ArticleView({ slug }: { slug: string }) {
-  const article = useQuery(api.articles.getBySlug, { slug });
+const BASE_URL = 'https://clint-bor.vercel.app';
+// Shown when an article has no image of its own.
+const FALLBACK_IMAGE = '/assets/web-icon.png';
 
-  if (article === undefined) {
-    return <p className="leaves__state">Turning the page…</p>;
-  }
-  if (article === null) {
-    return (
-      <div className="note__missing">
-        <p className="leaves__state">This note could not be found.</p>
-        <a className="btn btn--ghost" href="/articles">
-          <span className="arrow" aria-hidden="true" />
-          Back to Marginalia
-        </a>
-      </div>
+// Normalize (a trailing slash breaks the "//api/..." request URL).
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL?.trim().replace(
+  /\/+$/,
+  ''
+);
+
+async function getArticle(slug: string) {
+  if (!CONVEX_URL) return null;
+  try {
+    return await fetchQuery(
+      api.articles.getBySlug,
+      { slug },
+      { url: CONVEX_URL }
     );
+  } catch {
+    return null;
   }
-
-  const a = article as Article;
-  return (
-    <article className="note">
-      <div className="note__meta">
-        <span className="roman">Marginalia</span>
-        <span className="pip" />
-        <span>{formatDate(a.publishedAt)}</span>
-      </div>
-      <h1 className="note__title">{a.title}</h1>
-
-      {a.imageUrl && (
-        <figure className="note__figure">
-          {a.imageWidth && a.imageHeight ? (
-            <Image
-              src={a.imageUrl}
-              alt={a.title}
-              width={a.imageWidth}
-              height={a.imageHeight}
-              sizes="(max-width: 760px) 100vw, 760px"
-              style={{ width: '100%', height: 'auto' }}
-            />
-          ) : (
-            // Legacy image posted before dimensions were stored.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={a.imageUrl} alt={a.title} loading="lazy" decoding="async" />
-          )}
-        </figure>
-      )}
-
-      <div className="note__body">
-        {toParagraphs(a.body).map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
-      </div>
-
-      <div className="note__sign">
-        <span className="signature">Clinton Kibet</span>
-      </div>
-    </article>
-  );
 }
 
-export default function NotePage() {
-  const params = useParams<{ slug: string }>();
-  const slug = params?.slug ?? '';
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await getArticle(slug);
 
-  return (
-    <>
-      <Nav />
-      <main className="note-page">
-        <a className="note__back" href="/articles">
-          ← Marginalia
-        </a>
-        {convexConfigured ? (
-          <ArticleView slug={slug} />
-        ) : (
-          <p className="leaves__state">The notebook isn&apos;t connected yet.</p>
-        )}
-      </main>
+  if (!article) {
+    return {
+      title: 'Marginalia — Clinton Kibet',
+      description: 'Notes in the margins.',
+      openGraph: {
+        title: 'Marginalia — Clinton Kibet',
+        description: 'Notes in the margins.',
+        images: [{ url: FALLBACK_IMAGE }],
+      },
+      twitter: { card: 'summary', images: [FALLBACK_IMAGE] },
+    };
+  }
 
-      <footer className="leaves__foot">
-        <a href="/">❦ Return to the codex</a>
-      </footer>
-    </>
-  );
+  const description = excerpt(article.body, 160);
+  const url = `${BASE_URL}/articles/${slug}`;
+  const hasImage = !!article.imageUrl;
+  const imageUrl = article.imageUrl ?? FALLBACK_IMAGE;
+
+  return {
+    title: `${article.title} — Marginalia`,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: article.title,
+      description,
+      url,
+      type: 'article',
+      images: [
+        {
+          url: imageUrl,
+          alt: article.title,
+          ...(hasImage && article.imageWidth && article.imageHeight
+            ? { width: article.imageWidth, height: article.imageHeight }
+            : {}),
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  return <ArticleClient slug={slug} />;
 }
