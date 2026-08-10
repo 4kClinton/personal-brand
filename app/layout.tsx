@@ -1,7 +1,8 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Cormorant_Garamond, EB_Garamond, Caveat, Cinzel, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import ConvexClientProvider from './ConvexClientProvider';
+import PWARegister from '@/components/PWARegister';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -45,7 +46,12 @@ const BASE_URL = 'https://clint-bor.vercel.app';
 export const metadata: Metadata = {
   icons: {
     icon: '/assets/web-icon.png',
-    apple: '/assets/web-icon.png',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Kibet Codex',
   },
   metadataBase: new URL(BASE_URL),
   title: 'Clinton Kibet — Codex of a Polymath',
@@ -81,6 +87,12 @@ export const metadata: Metadata = {
       'Clinton Kibet — software engineer, designer, draughtsman, painter, and maker based in Nairobi.',
     images: ['/assets/portrait.png'],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#08060A',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 const personSchema = {
@@ -151,6 +163,7 @@ export default function RootLayout({
       </head>
       <body>
         <ConvexClientProvider>{children}</ConvexClientProvider>
+        <PWARegister />
       </body>
     </html>
   );

@@ -134,6 +134,18 @@ function Dashboard({
     setImageCleared(false);
   }
 
+  // Mobile browsers (Chrome on Android especially) don't support pasting
+  // images into a textarea, so offer an explicit picker too.
+  function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0] ?? null;
+    if (picked) {
+      setFile(picked);
+      setImageCleared(false);
+    }
+    // Reset so picking the same file again still fires onChange.
+    e.target.value = '';
+  }
+
   function removeImage() {
     setFile(null);
     setExistingImageUrl(null);
@@ -236,7 +248,10 @@ function Dashboard({
         />
 
         <label className="field-label" htmlFor="b">
-          Body <span className="field-label__hint">— paste an image anywhere to illustrate</span>
+          Body{' '}
+          <span className="field-label__hint">
+            — attach an image below, or paste one in (desktop)
+          </span>
         </label>
         <textarea
           id="b"
@@ -244,9 +259,24 @@ function Dashboard({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onPaste={handlePaste}
-          placeholder="Write freely. Leave a blank line between paragraphs. Paste an image to attach one."
+          placeholder="Write freely. Leave a blank line between paragraphs."
           rows={12}
         />
+
+        <div className="attach-row">
+          <label className="attach-btn">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePickFile}
+              hidden
+            />
+            <span aria-hidden="true">＋</span> Attach image
+          </label>
+          <span className="attach-row__hint">
+            photo, screenshot, or paste on desktop
+          </span>
+        </div>
 
         {(previewUrl || existingImageUrl) && (
           <div className="paste-preview">

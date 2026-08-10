@@ -13,11 +13,18 @@ import { Doc, Id } from './_generated/dataModel';
 function assertAdmin(key: string) {
   const expected = process.env.ADMIN_KEY;
   if (!expected) {
+    // Never log the key itself — just the state, so it's greppable in Convex logs.
+    console.error(
+      '[auth] ADMIN_KEY is NOT set on this deployment — set it with `npx convex env set ADMIN_KEY ...`'
+    );
     throw new Error(
       'ADMIN_KEY is not configured on the Convex deployment. Run `npx convex env set ADMIN_KEY <your-password>`.'
     );
   }
   if (key !== expected) {
+    console.warn(
+      `[auth] rejected admin write: key mismatch (received length=${key.length}, expected length=${expected.length})`
+    );
     throw new Error('Unauthorized — wrong admin key.');
   }
 }
@@ -59,6 +66,7 @@ export const list = query({
       .withIndex('by_published', (q) => q.eq('published', true))
       .order('desc')
       .collect();
+    console.log(`[articles] list: returning ${docs.length} published article(s)`);
     return Promise.all(docs.map((d) => withImageUrl(ctx, d)));
   },
 });
@@ -90,7 +98,12 @@ export const listAll = query({
 export const checkKey = query({
   args: { key: v.string() },
   handler: async (_ctx, { key }) => {
-    return !!process.env.ADMIN_KEY && key === process.env.ADMIN_KEY;
+    const configured = !!process.env.ADMIN_KEY;
+    const match = configured && key === process.env.ADMIN_KEY;
+    console.log(
+      `[auth] checkKey called: configured=${configured}, match=${match}, receivedLength=${key.length}`
+    );
+    return match;
   },
 });
 
@@ -100,6 +113,7 @@ export const generateUploadUrl = mutation({
   args: { key: v.string() },
   handler: async (ctx, { key }) => {
     assertAdmin(key);
+    console.log('[articles] generateUploadUrl: issuing upload URL');
     return ctx.storage.generateUploadUrl();
   },
 });
@@ -115,15 +129,20 @@ export const create = mutation({
   handler: async (ctx, { key, title, body, imageId, published }) => {
     assertAdmin(key);
     const now = Date.now();
-    return ctx.db.insert('articles', {
+    const slug = slugify(title);
+    const id = await ctx.db.insert('articles', {
       title: title.trim(),
       body: body.trim(),
-      slug: slugify(title),
+      slug,
       imageId,
       published,
       publishedAt: now,
       updatedAt: now,
     });
+    console.log(
+      `[articles] create: id=${id} slug="${slug}" published=${published} hasImage=${!!imageId}`
+    );
+    return id;
   },
 });
 
@@ -164,6 +183,9 @@ export const update = mutation({
     }
 
     await ctx.db.patch(id, patch);
+    console.log(
+      `[articles] update: id=${id} published=${published} newImage=${!!imageId} removedImage=${!!removeImage}`
+    );
   },
 });
 
@@ -174,5 +196,6 @@ export const remove = mutation({
     const doc = await ctx.db.get(id);
     if (doc?.imageId) await ctx.storage.delete(doc.imageId);
     await ctx.db.delete(id);
+    console.log(`[articles] remove: id=${id} deletedImage=${!!doc?.imageId}`);
   },
 });
